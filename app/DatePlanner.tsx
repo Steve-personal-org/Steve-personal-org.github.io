@@ -1,8 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+const requiredBirthday = {
+  month: "02",
+  day: "02",
+  year: "1997",
+} as const;
+const birthdayMonths = Array.from({ length: 12 }, (_, index) =>
+  String(index + 1).padStart(2, "0"),
+);
+const birthdayDays = Array.from({ length: 31 }, (_, index) =>
+  String(index + 1).padStart(2, "0"),
+);
+const birthdayYears = Array.from({ length: 87 }, (_, index) =>
+  String(2026 - index),
+);
 
 type Choice = {
   id: string;
@@ -257,7 +271,11 @@ function getLocalDateValue() {
 }
 
 export default function DatePlanner() {
-  const [screen, setScreen] = useState<"intro" | "planner" | "success">("intro");
+  const [screen, setScreen] = useState<"birthday" | "intro" | "planner" | "success">("birthday");
+  const [birthMonth, setBirthMonth] = useState("");
+  const [birthDay, setBirthDay] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  const [birthdayError, setBirthdayError] = useState("");
   const [step, setStep] = useState(0);
   const [plan, setPlan] = useState<Plan>(emptyPlan);
   const [dates, setDates] = useState<DateChoice[]>([]);
@@ -278,6 +296,23 @@ export default function DatePlanner() {
   function updatePlan<Key extends keyof Plan>(key: Key, value: Plan[Key]) {
     setPlan((current) => ({ ...current, [key]: value }));
     setError("");
+  }
+
+  function confirmBirthday(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (
+      birthMonth === requiredBirthday.month &&
+      birthDay === requiredBirthday.day &&
+      birthYear === requiredBirthday.year
+    ) {
+      setBirthdayError("");
+      setScreen("intro");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    setBirthdayError("生日好像不太对，再想想看呀 ♡");
   }
 
   function chooseAndContinue(key: "food", value: string) {
@@ -410,7 +445,14 @@ export default function DatePlanner() {
       </div>
 
       <header className="topbar">
-        <button className="brand" type="button" onClick={resetPlanner} aria-label="回到首页">
+        <button
+          className="brand"
+          type="button"
+          onClick={() => {
+            if (screen !== "birthday") resetPlanner();
+          }}
+          aria-label={screen === "birthday" ? "生日确认页面" : "回到邀请函"}
+        >
           <span className="brand-mark">S</span>
           <span>
             <strong>LOVE PLAN</strong>
@@ -419,9 +461,113 @@ export default function DatePlanner() {
         </button>
         <div className="topbar-note">
           <span className="status-dot" />
-          男朋友正在线等答案
+          {screen === "birthday" ? "一封只给你的秘密邀请" : "男朋友正在线等答案"}
         </div>
       </header>
+
+      {screen === "birthday" && (
+        <section className="birthday-wrap screen-enter">
+          <div className="birthday-card">
+            <div className="birthday-decoration" aria-hidden="true">
+              <span className="birthday-sparkle birthday-sparkle-one">✦</span>
+              <span className="birthday-sparkle birthday-sparkle-two">✧</span>
+              <span className="birthday-sparkle birthday-sparkle-three">⋆</span>
+              <div className="birthday-seal">
+                <strong>♥</strong>
+                <small>ONLY YOU</small>
+              </div>
+            </div>
+
+            <span className="birthday-kicker">A LITTLE SECRET</span>
+            <h1>
+              先确认一下，
+              <br />
+              <em>是我最喜欢的那个人吗？</em>
+            </h1>
+            <p>
+              输入你的生日，打开这封只写给你的邀请。
+            </p>
+
+            <form className="birthday-form" onSubmit={confirmBirthday}>
+              <div className="birthday-format" aria-hidden="true">
+                MM <span>/</span> DD <span>/</span> YYYY
+              </div>
+              <div className="birthday-fields">
+                <label className="birthday-field">
+                  <span>MONTH</span>
+                  <select
+                    value={birthMonth}
+                    onChange={(event) => {
+                      setBirthMonth(event.target.value);
+                      setBirthdayError("");
+                    }}
+                    aria-label="出生月份"
+                    aria-invalid={Boolean(birthdayError)}
+                  >
+                    <option value="">Month</option>
+                    {birthdayMonths.map((month) => (
+                      <option key={month} value={month}>{month}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="birthday-field">
+                  <span>DAY</span>
+                  <select
+                    value={birthDay}
+                    onChange={(event) => {
+                      setBirthDay(event.target.value);
+                      setBirthdayError("");
+                    }}
+                    aria-label="出生日期"
+                    aria-invalid={Boolean(birthdayError)}
+                  >
+                    <option value="">Day</option>
+                    {birthdayDays.map((day) => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="birthday-field birthday-year">
+                  <span>YEAR</span>
+                  <select
+                    value={birthYear}
+                    onChange={(event) => {
+                      setBirthYear(event.target.value);
+                      setBirthdayError("");
+                    }}
+                    aria-label="出生年份"
+                    aria-invalid={Boolean(birthdayError)}
+                  >
+                    <option value="">Year</option>
+                    {birthdayYears.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="birthday-feedback" aria-live="polite">
+                {birthdayError && <p role="alert">{birthdayError}</p>}
+              </div>
+
+              <button
+                className="primary-button birthday-button"
+                type="submit"
+                disabled={!birthMonth || !birthDay || !birthYear}
+              >
+                确认生日，打开邀请
+                <span>💌</span>
+              </button>
+            </form>
+
+            <div className="birthday-note">
+              <span>♡</span>
+              只有正确的你，才知道答案
+              <span>♡</span>
+            </div>
+          </div>
+        </section>
+      )}
 
       {screen === "intro" && (
         <section className="intro-layout screen-enter">
